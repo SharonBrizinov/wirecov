@@ -3,6 +3,8 @@ By Sharon Brizinov
 
 Wireshark/tshark code coverage analysis tool. Builds an instrumented tshark from source inside Docker, runs pcap files through it, and generates detailed coverage reports - including per-dissector breakdowns with GitLab source links.
 
+wirecov builds an instrumented Wireshark from source inside Docker and measures exactly which lines of code your pcap files exercise across all protocol dissectors. The key insight is its diff-from-baseline mode - it first captures what tshark runs just by starting up (registration, handoff code), then subtracts that, so you see only the coverage your pcaps actually contributed through real packet dissection. Great for finding undertested protocol code paths, validating fuzzing corpora, or understanding which dissectors your traffic actually hits.
+
 <p align="center">
   <img src="docs/images/help.svg" alt="wirecov --help" width="700">
 </p>
