@@ -38,6 +38,9 @@ All compilation happens inside Docker — nothing is built on your host machine.
 ## Installation
 
 ```bash
+python3 -m venv venv
+source venv/bin/activate
+
 pip install -e .
 ```
 
