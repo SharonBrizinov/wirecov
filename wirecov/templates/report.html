@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wirecov{% if title_suffix %} - {{ title_suffix }}{% endif %}{% if ws_version %} ({{ ws_version }}){% endif %}</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --border: #0f3460;
+    --text: #e0e0e0;
+    --text-dim: #888;
+    --green: #4caf50;
+    --yellow: #ff9800;
+    --red: #f44336;
+    --bright-green: #66bb6a;
+    --bright-red: #ef5350;
+    --blue: #42a5f5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--bg);
+    color: var(--text);
+    padding: 2rem;
+    line-height: 1.5;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+  h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; color: var(--text-dim); }
+  .meta { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem; }
+  .summary {
+    display: flex; gap: 1rem; margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    min-width: 140px;
+  }
+  .stat-value { font-size: 1.8rem; font-weight: bold; }
+  .stat-value-sm { font-size: 1.3rem; font-weight: bold; }
+  .stat-label { font-size: 0.8rem; color: var(--text-dim); }
+  .stat-sublabel { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.2rem; }
+  .diff-breakdown {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
+  }
+  .diff-breakdown .bar-stacked {
+    height: 20px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0.5rem 0;
+    display: flex;
+  }
+  .diff-breakdown .bar-segment {
+    height: 100%;
+    transition: width 0.3s;
+  }
+  .diff-breakdown .legend {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.3rem;
+  }
+  .diff-breakdown .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+  }
+  .diff-breakdown .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    display: inline-block;
+  }
+  .pcap-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 0.8rem;
+  }
+  .pcap-list summary {
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+  .pcap-list ul {
+    list-style: none;
+    padding: 0;
+    columns: 3;
+    column-gap: 2rem;
+  }
+  .pcap-list li {
+    color: var(--text-dim);
+    padding: 0.1rem 0;
+    break-inside: avoid;
+  }
+  .search-box {
+    margin-bottom: 1rem;
+    width: 100%;
+    max-width: 400px;
+    padding: 0.5rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9rem;
+  }
+  .search-box::placeholder { color: var(--text-dim); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  thead { position: sticky; top: 0; }
+  th {
+    background: var(--surface);
+    border-bottom: 2px solid var(--border);
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  th:hover { color: #fff; }
+  th.sort-asc::after { content: ' \u25b2'; }
+  th.sort-desc::after { content: ' \u25bc'; }
+  td {
+    padding: 0.4rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+  }
+  tr:hover { background: rgba(255,255,255,0.03); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .dim { color: var(--text-dim); }
+  .rate-none { color: var(--red); }
+  .rate-low { color: var(--bright-red); }
+  .rate-medium { color: var(--yellow); }
+  .rate-high { color: var(--green); }
+  .rate-full { color: var(--bright-green); }
+  a:hover { color: #fff !important; border-bottom-color: #fff !important; }
+  .bar-bg {
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    height: 6px;
+    width: 80px;
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 0.5rem;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+  .unchanged-section {
+    margin-top: 2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0;
+  }
+  .unchanged-section summary {
+    cursor: pointer;
+    padding: 1rem 1.5rem;
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+  }
+  .unchanged-section summary:hover { color: var(--text); }
+  .unchanged-section .unchanged-table {
+    padding: 0 1rem 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  .unchanged-section table {
+    font-size: 0.8rem;
+  }
+  .unchanged-section td {
+    color: var(--text-dim);
+  }
+  footer {
+    margin-top: 2rem;
+    color: var(--text-dim);
+    font-size: 0.75rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>wirecov{% if title_suffix %} - {{ title_suffix }}{% endif %}</h1>
+<p class="meta">
+  {% if ws_version %}Wireshark {{ ws_version }}{% endif %}
+  {% if pcap_count %} | {{ pcap_count }} pcap file(s){% endif %}
+  | {{ summary.total_dissectors }} dissectors analyzed
+</p>
+
+{% if diff_stats %}
+{# ===== DIFF REPORT: enhanced stats ===== #}
+<div class="summary">
+  <div class="stat">
+    <div class="stat-value" style="color:var(--blue)">{{ diff_stats.exercised_dissectors }}</div>
+    <div class="stat-label">Exercised by Pcap(s)</div>
+    <div class="stat-sublabel">{{ diff_stats.exercised_pct }}% of {{ diff_stats.total_dissectors }} total</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value" style="color:var(--text-dim)">{{ diff_stats.unchanged_dissectors }}</div>
+    <div class="stat-label">Init-Only (Unchanged)</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value-sm" style="color:var(--bright-green)">{{ "{:,}".format(diff_stats.pcap_only_lines_hit) }}</div>
+    <div class="stat-label">Pcap-Only Lines Hit</div>
+    <div class="stat-sublabel">{{ diff_stats.pcap_only_line_rate }}% of dissector lines</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value-sm" style="color:var(--yellow)">{{ "{:,}".format(diff_stats.init_lines_hit) }}</div>
+    <div class="stat-label">Init-Only Lines Hit</div>
+    <div class="stat-sublabel">{{ diff_stats.init_line_rate }}% of dissector lines</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value-sm">{{ "{:,}".format(diff_stats.pcap_lines_hit) }}</div>
+    <div class="stat-label">Total Lines Hit</div>
+    <div class="stat-sublabel">init + pcap combined</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value-sm">{{ "{:,}".format(diff_stats.total_lines_found) }}</div>
+    <div class="stat-label">Total Dissector Lines</div>
+  </div>
+</div>
+
+{# Stacked bar showing init vs pcap-only vs uncovered #}
+{% set uncovered_lines = diff_stats.total_lines_found - diff_stats.pcap_lines_hit %}
+{% set init_pct = (diff_stats.init_lines_hit / diff_stats.total_lines_found * 100) if diff_stats.total_lines_found else 0 %}
+{% set pcap_pct = (diff_stats.pcap_only_lines_hit / diff_stats.total_lines_found * 100) if diff_stats.total_lines_found else 0 %}
+{% set uncov_pct = 100 - init_pct - pcap_pct %}
+<div class="diff-breakdown">
+  <div style="margin-bottom:0.3rem"><strong>Line Coverage Breakdown</strong></div>
+  <div class="bar-stacked">
+    <div class="bar-segment" style="width:{{ pcap_pct }}%;background:var(--bright-green)"></div>
+    <div class="bar-segment" style="width:{{ init_pct }}%;background:var(--yellow)"></div>
+    <div class="bar-segment" style="width:{{ uncov_pct }}%;background:rgba(255,255,255,0.1)"></div>
+  </div>
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot" style="background:var(--bright-green)"></span> Pcap-only: {{ "%.1f"|format(pcap_pct) }}% ({{ "{:,}".format(diff_stats.pcap_only_lines_hit) }} lines)</span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--yellow)"></span> Init-only: {{ "%.1f"|format(init_pct) }}% ({{ "{:,}".format(diff_stats.init_lines_hit) }} lines)</span>
+    <span class="legend-item"><span class="legend-dot" style="background:rgba(255,255,255,0.15)"></span> Uncovered: {{ "%.1f"|format(uncov_pct) }}% ({{ "{:,}".format(uncovered_lines) }} lines)</span>
+  </div>
+</div>
+
+{% if diff_stats.by_classification %}
+<div class="summary">
+  {% for cls, count in diff_stats.by_classification.items() %}
+  <div class="stat" style="padding:0.6rem 1rem;min-width:auto">
+    <div class="stat-value-sm rate-{{ cls }}">{{ count }}</div>
+    <div class="stat-label">{{ cls }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% else %}
+{# ===== STANDARD REPORT: original stats ===== #}
+<div class="summary">
+  <div class="stat">
+    <div class="stat-value">{{ "%.1f" | format(summary.overall_line_rate * 100) }}%</div>
+    <div class="stat-label">Overall Line Coverage</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ summary.covered_dissectors }}</div>
+    <div class="stat-label">Covered Dissectors</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ summary.uncovered_dissectors }}</div>
+    <div class="stat-label">Uncovered Dissectors</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ "{:,}".format(summary.total_lines_hit) }}</div>
+    <div class="stat-label">Lines Hit / {{ "{:,}".format(summary.total_lines) }}</div>
+  </div>
+</div>
+{% endif %}
+
+{% if pcap_list %}
+<div class="pcap-list">
+  <details>
+    <summary>Pcap Files ({{ pcap_count }})</summary>
+    <ul>
+      {% for pcap in pcap_list %}
+      <li>{{ pcap }}</li>
+      {% endfor %}
+    </ul>
+  </details>
+</div>
+{% endif %}
+
+<input type="text" class="search-box" id="search"
+       placeholder="Search dissectors..." autocomplete="off">
+
+{% if init_hits %}
+{# ===== DIFF TABLE: compact columns ===== #}
+<table id="dissector-table">
+<thead>
+  <tr>
+    <th data-col="0" class="num">#</th>
+    <th data-col="1">Dissector</th>
+    {% if has_dates %}
+    <th data-col="2">Created</th>
+    <th data-col="3">Updated</th>
+    {% endif %}
+    <th data-col="{{ 4 if has_dates else 2 }}" class="num">Lines</th>
+    <th data-col="{{ 5 if has_dates else 3 }}" class="num">Funcs</th>
+    <th data-col="{{ 6 if has_dates else 4 }}" class="num" style="color:var(--bright-green)" title="Lines added by pcap beyond init baseline">+Lines from Init</th>
+  </tr>
+</thead>
+<tbody>
+  {% for d in dissectors %}
+  {% set ih = init_hits.get(d.name, 0) if init_hits else 0 %}
+  {% set added_lines = d.lines_hit - ih if d.lines_hit > ih else 0 %}
+  {% set added_pct = (added_lines / d.lines_found * 100) if d.lines_found and added_lines else 0 %}
+  <tr data-name="{{ d.name }}">
+    <td class="num dim">{{ loop.index }}</td>
+    <td><a href="{{ d.gitlab_url(ws_version) }}" target="_blank" style="color:var(--text);text-decoration:none;border-bottom:1px dotted var(--text-dim)">{{ d.name }}</a></td>
+    {% if has_dates %}
+    <td class="dim">{{ d.first_created or '-' }}</td>
+    <td class="dim">{{ d.last_updated or '-' }}</td>
+    {% endif %}
+    <td class="num">
+      <span class="rate-{{ d.classification }}">{{ d.lines_hit }}</span><span class="dim"> / {{ d.lines_found }}</span>
+      <span class="rate-{{ d.classification }}" style="margin-left:0.3rem">({{ "%.1f" | format(d.line_rate * 100) }}%)</span>
+      <span class="bar-bg"><span class="bar-fill rate-{{ d.classification }}"
+        style="width:{{ (d.line_rate * 100)|int }}%; background:currentColor"></span></span>
+    </td>
+    <td class="num">
+      <span class="rate-{{ d.classification }}">{{ d.functions_hit }}</span><span class="dim"> / {{ d.functions_found }}</span>
+      <span class="rate-{{ d.classification }}" style="margin-left:0.3rem">({{ "%.1f" | format(d.function_rate * 100) }}%)</span>
+      <span class="bar-bg"><span class="bar-fill rate-{{ d.classification }}"
+        style="width:{{ (d.function_rate * 100)|int }}%; background:currentColor"></span></span>
+    </td>
+    <td class="num">
+      {% if added_lines > 0 %}
+      <span style="color:var(--bright-green)">+{{ added_lines }}</span>
+      <span style="color:var(--bright-green);margin-left:0.3rem">(+{{ "%.1f" | format(added_pct) }}%)</span>
+      {% else %}
+      <span class="dim">0</span>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</tbody>
+</table>
+
+{% else %}
+{# ===== STANDARD TABLE: full columns ===== #}
+<table id="dissector-table">
+<thead>
+  <tr>
+    <th data-col="0" class="num">#</th>
+    <th data-col="1">Dissector</th>
+    <th data-col="2" class="num">Lines</th>
+    <th data-col="3" class="num">Funcs</th>
+    <th data-col="4">Level</th>
+    {% if has_dates %}
+    <th data-col="5">Created</th>
+    <th data-col="6">Updated</th>
+    {% endif %}
+  </tr>
+</thead>
+<tbody>
+  {% for d in dissectors %}
+  <tr data-name="{{ d.name }}">
+    <td class="num dim">{{ loop.index }}</td>
+    <td><a href="{{ d.gitlab_url(ws_version) }}" target="_blank" style="color:var(--text);text-decoration:none;border-bottom:1px dotted var(--text-dim)">{{ d.name }}</a></td>
+    <td class="num">
+      <span class="rate-{{ d.classification }}">{{ d.lines_hit }}</span><span class="dim"> / {{ d.lines_found }}</span>
+      <span class="rate-{{ d.classification }}" style="margin-left:0.3rem">({{ "%.1f" | format(d.line_rate * 100) }}%)</span>
+      <span class="bar-bg"><span class="bar-fill rate-{{ d.classification }}"
+        style="width:{{ (d.line_rate * 100)|int }}%; background:currentColor"></span></span>
+    </td>
+    <td class="num">
+      <span class="rate-{{ d.classification }}">{{ d.functions_hit }}</span><span class="dim"> / {{ d.functions_found }}</span>
+      <span class="rate-{{ d.classification }}" style="margin-left:0.3rem">({{ "%.1f" | format(d.function_rate * 100) }}%)</span>
+      <span class="bar-bg"><span class="bar-fill rate-{{ d.classification }}"
+        style="width:{{ (d.function_rate * 100)|int }}%; background:currentColor"></span></span>
+    </td>
+    <td><span class="rate-{{ d.classification }}">{{ d.classification }}</span></td>
+    {% if has_dates %}
+    <td class="dim">{{ d.first_created or '-' }}</td>
+    <td class="dim">{{ d.last_updated or '-' }}</td>
+    {% endif %}
+  </tr>
+  {% endfor %}
+</tbody>
+</table>
+{% endif %}
+
+{% if unchanged_dissectors %}
+<div class="unchanged-section">
+  <details>
+    <summary>Unchanged Dissectors — init-only, no pcap contribution ({{ unchanged_dissectors|length }})</summary>
+    <div class="unchanged-table">
+      <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Dissector</th>
+          <th class="num">Lines</th>
+          {% if has_dates %}
+          <th>Created</th>
+          <th>Updated</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in unchanged_dissectors %}
+        <tr>
+          <td class="dim">{{ loop.index }}</td>
+          <td><a href="{{ d.gitlab_url(ws_version) }}" target="_blank" style="color:var(--text-dim);text-decoration:none;border-bottom:1px dotted rgba(255,255,255,0.15)">{{ d.name }}</a></td>
+          <td class="num">{{ d.lines_found }}</td>
+          {% if has_dates %}
+          <td class="dim">{{ d.first_created or '-' }}</td>
+          <td class="dim">{{ d.last_updated or '-' }}</td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      </table>
+    </div>
+  </details>
+</div>
+{% endif %}
+
+<footer>Generated by wirecov{% if ws_version %} | <a href="https://gitlab.com/wireshark/wireshark{% if ws_version and ws_version != 'master' %}/-/tree/{{ ws_version }}{% endif %}" target="_blank" style="color:var(--text-dim)">Wireshark {{ ws_version }}</a>{% endif %}</footer>
+
+<script>
+document.getElementById('search').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('#dissector-table tbody tr').forEach(function(row) {
+    row.style.display = row.dataset.name.includes(q) ? '' : 'none';
+  });
+});
+
+let sortCol = -1, sortDir = 1;
+document.querySelectorAll('#dissector-table th').forEach(function(th) {
+  th.addEventListener('click', function() {
+    const col = parseInt(this.dataset.col);
+    if (sortCol === col) { sortDir *= -1; }
+    else { sortCol = col; sortDir = 1; }
+    document.querySelectorAll('#dissector-table th').forEach(h => h.classList.remove('sort-asc','sort-desc'));
+    this.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+    const tbody = document.querySelector('#dissector-table tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.sort(function(a, b) {
+      let va = a.children[col].textContent.trim();
+      let vb = b.children[col].textContent.trim();
+      const na = parseFloat(va), nb = parseFloat(vb);
+      if (!isNaN(na) && !isNaN(nb)) return (na - nb) * sortDir;
+      return va.localeCompare(vb) * sortDir;
+    });
+    rows.forEach(r => tbody.appendChild(r));
+  });
+});
+</script>
+</body>
+</html>
