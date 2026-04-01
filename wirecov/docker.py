@@ -154,6 +154,8 @@ def run_container(version: str, pcap_path: Path, output_path: Path,
         "-e", f"PER_PCAP={'1' if per_pcap else '0'}",
         "-e", f"PROTOCOLS={'1' if protocols else '0'}",
         "-e", f"SINGLE_PCAP={env_single}",
+        "-e", f"TSHARK_FLAGS_PASS1={' '.join(CONFIG.tshark_flags_pass1)}",
+        "-e", f"TSHARK_FLAGS_PASS2={' '.join(CONFIG.tshark_flags_pass2)}",
         # tmpfs for scratch space (not build tree — that's in the image)
         "--tmpfs", "/tmp:exec,size=2G",
     ]

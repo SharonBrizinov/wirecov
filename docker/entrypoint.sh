@@ -7,8 +7,9 @@ set -euo pipefail
 # Environment variables (set by host Python):
 #   PER_PCAP=0|1     — capture per-pcap attribution data
 #   PROTOCOLS=0|1    — collect protocol tree (frame.protocols) info
-#   TSHARK_FLAGS     — extra tshark flags (default: "-V -x -2")
-#   SINGLE_PCAP      — if set, process only this filename from /pcaps
+#   TSHARK_FLAGS_PASS1 — tshark flags for pass 1: full reassembly (default: "-V -x -2")
+#   TSHARK_FLAGS_PASS2 — tshark flags for pass 2: no reassembly (default: "-V -x -o ...")
+#   SINGLE_PCAP        — if set, process only this filename from /pcaps
 
 MODE=${1:-run}
 shift || true
@@ -19,7 +20,8 @@ BASELINE="/src/baseline.info"
 PCAP_DIR="/pcaps"
 OUTPUT_DIR="/output"
 TSHARK="$BUILD_DIR/run/tshark"
-TSHARK_FLAGS="${TSHARK_FLAGS:--V -x -2}"
+TSHARK_FLAGS_PASS1="${TSHARK_FLAGS_PASS1:--V -x -2}"
+TSHARK_FLAGS_PASS2="${TSHARK_FLAGS_PASS2:--V -x -o ip.defragment:FALSE -o tcp.desegment_tcp_streams:FALSE -o tcp.check_checksum:FALSE -o udp.check_checksum:FALSE -o tls.desegment_ssl_records:FALSE -o http.desegment_body:FALSE}"
 PER_PCAP="${PER_PCAP:-0}"
 PROTOCOLS="${PROTOCOLS:-0}"
 SINGLE_PCAP="${SINGLE_PCAP:-}"
@@ -132,7 +134,7 @@ open('/tmp/empty.pcap', 'wb').write(header)
 "
     # Run tshark on empty pcap — exercises init code only
     # shellcheck disable=SC2086
-    "$TSHARK" -r /tmp/empty.pcap $TSHARK_FLAGS > /dev/null 2>&1 || true
+    "$TSHARK" -r /tmp/empty.pcap $TSHARK_FLAGS_PASS1 > /dev/null 2>&1 || true
 
     lcov_capture /tmp/init.run.info
     if [ -f /tmp/init.run.info ]; then
@@ -170,9 +172,16 @@ open('/tmp/empty.pcap', 'wb').write(header)
             find "$BUILD_DIR" -name '*.gcda' -delete 2>/dev/null || true
         fi
 
+        # Pass 1: full reassembly — exercises reassembly/defrag/checksum code
         # shellcheck disable=SC2086
-        "$TSHARK" -r "$pcap" $TSHARK_FLAGS > /dev/null 2>&1 || {
-            echo "WIRECOV_WARN: tshark failed on $pcap_name (possibly malformed)"
+        "$TSHARK" -r "$pcap" $TSHARK_FLAGS_PASS1 > /dev/null 2>&1 || {
+            echo "WIRECOV_WARN: tshark pass 1 failed on $pcap_name (possibly malformed)"
+        }
+
+        # Pass 2: no reassembly — forces per-packet dissection of upper layers
+        # shellcheck disable=SC2086
+        "$TSHARK" -r "$pcap" $TSHARK_FLAGS_PASS2 > /dev/null 2>&1 || {
+            echo "WIRECOV_WARN: tshark pass 2 failed on $pcap_name (possibly malformed)"
         }
 
         if [ "$PER_PCAP" = "1" ]; then

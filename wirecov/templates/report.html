@@ -82,6 +82,40 @@
     border-radius: 2px;
     display: inline-block;
   }
+  .methodology {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0;
+    margin-bottom: 1.5rem;
+    font-size: 0.8rem;
+  }
+  .methodology summary {
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9rem;
+    padding: 0.8rem 1.5rem;
+  }
+  .methodology .content {
+    padding: 0 1.5rem 1rem;
+  }
+  .methodology .pass {
+    margin-bottom: 0.8rem;
+  }
+  .methodology .pass-label {
+    font-weight: bold;
+    margin-bottom: 0.2rem;
+  }
+  .methodology .pass-desc {
+    color: var(--text-dim);
+    margin-bottom: 0.2rem;
+  }
+  .methodology code {
+    background: rgba(255,255,255,0.07);
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.78rem;
+  }
   .pcap-list {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -207,7 +241,27 @@
   {% if ws_version %}Wireshark {{ ws_version }}{% endif %}
   {% if pcap_count %} | {{ pcap_count }} pcap file(s){% endif %}
   | {{ summary.total_dissectors }} dissectors analyzed
+  | 2 tshark passes per pcap
 </p>
+
+<div class="methodology">
+  <details>
+    <summary>tshark Methodology (2 passes per pcap)</summary>
+    <div class="content">
+      <p style="margin-bottom:0.8rem;color:var(--text-dim)">Each pcap is processed twice with different tshark configurations to maximize dissector code coverage.</p>
+      <div class="pass">
+        <div class="pass-label">Pass 1: Full Reassembly</div>
+        <div class="pass-desc">Exercises reassembly, defragmentation, and checksum verification code paths.</div>
+        <div><code>tshark {{ tshark_pass1_flags }}</code></div>
+      </div>
+      <div class="pass">
+        <div class="pass-label">Pass 2: No Reassembly</div>
+        <div class="pass-desc">Disables reassembly and checksum checks to force per-packet dissection of upper-layer protocols that would otherwise be skipped due to missing fragments or bad checksums.</div>
+        <div><code>tshark {{ tshark_pass2_flags }}</code></div>
+      </div>
+    </div>
+  </details>
+</div>
 
 {% if diff_stats %}
 {# ===== DIFF REPORT: enhanced stats ===== #}

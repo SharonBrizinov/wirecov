@@ -60,6 +60,16 @@ def _write_run_metadata(run_dir: Path, ws_version: str, pcaps: List[Path],
         "pcap_input": str(pcap_path),
         "pcap_count": len(pcaps),
         "pcap_files": [str(p.name) for p in pcaps],
+        "tshark_passes": {
+            "pass1": {
+                "description": "Full reassembly — exercises reassembly, defragmentation, and checksum code paths",
+                "flags": CONFIG.tshark_flags_pass1,
+            },
+            "pass2": {
+                "description": "No reassembly — forces per-packet dissection of upper-layer protocols",
+                "flags": CONFIG.tshark_flags_pass2,
+            },
+        },
     }
     meta_dir = run_dir / "metadata"
     meta_dir.mkdir(parents=True, exist_ok=True)
@@ -77,6 +87,16 @@ def _write_full_coverage_summary(run_dir: Path, report, ws_version: str,
         "wireshark_version": ws_version,
         "wireshark_repo": CONFIG.wireshark_repo,
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "tshark_passes": {
+            "pass1": {
+                "description": "Full reassembly — exercises reassembly, defragmentation, and checksum code paths",
+                "flags": CONFIG.tshark_flags_pass1,
+            },
+            "pass2": {
+                "description": "No reassembly — forces per-packet dissection of upper-layer protocols",
+                "flags": CONFIG.tshark_flags_pass2,
+            },
+        },
         "total": {
             "files": len(report.files),
             "lines_found": report.total_lines_found,

@@ -15,8 +15,19 @@ class WirecovConfig:
     docker_image_prefix: str = "wirecov-tshark"
     tmpfs_size: str = "6G"
 
-    # tshark flags for maximum dissection coverage
-    tshark_flags: List[str] = field(default_factory=lambda: ["-V", "-x", "-2"])
+    # tshark flags for maximum dissection coverage (two passes)
+    # Pass 1: full reassembly — exercises reassembly/defrag/checksum code paths
+    tshark_flags_pass1: List[str] = field(default_factory=lambda: ["-V", "-x", "-2"])
+    # Pass 2: no reassembly — forces per-packet dissection of upper-layer protocols
+    tshark_flags_pass2: List[str] = field(default_factory=lambda: [
+        "-V", "-x",
+        "-o", "ip.defragment:FALSE",
+        "-o", "tcp.desegment_tcp_streams:FALSE",
+        "-o", "tcp.check_checksum:FALSE",
+        "-o", "udp.check_checksum:FALSE",
+        "-o", "tls.desegment_ssl_records:FALSE",
+        "-o", "http.desegment_body:FALSE",
+    ])
 
     # Coverage directories to include in reports
     coverage_dirs: List[str] = field(

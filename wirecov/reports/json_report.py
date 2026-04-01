@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from wirecov.config import CONFIG
 from wirecov.dissectors import DissectorInfo, compute_summary
 
 
@@ -31,6 +32,16 @@ def build_json(dissectors: List[DissectorInfo],
         "tool": "wirecov",
         "pcap_files": pcap_list or [],
         "pcap_count": len(pcap_list) if pcap_list else 0,
+        "tshark_passes": {
+            "pass1": {
+                "description": "Full reassembly — exercises reassembly, defragmentation, and checksum code paths",
+                "flags": CONFIG.tshark_flags_pass1,
+            },
+            "pass2": {
+                "description": "No reassembly — forces per-packet dissection of upper-layer protocols",
+                "flags": CONFIG.tshark_flags_pass2,
+            },
+        },
         "summary": compute_summary(dissectors),
         "dissectors": dissector_entries,
     }

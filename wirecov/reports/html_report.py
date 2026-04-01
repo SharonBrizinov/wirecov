@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from wirecov.config import CONFIG
 from wirecov.dissectors import DissectorInfo, compute_summary
 
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
@@ -39,6 +40,8 @@ def write_html(dissectors: List[DissectorInfo], ws_version: str = "",
         unchanged_dissectors=unchanged_dissectors or [],
         diff_stats=diff_stats,
         init_hits=init_hits or {},
+        tshark_pass1_flags=" ".join(CONFIG.tshark_flags_pass1),
+        tshark_pass2_flags=" ".join(CONFIG.tshark_flags_pass2),
     )
 
     if output_path:
