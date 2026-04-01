@@ -1,9 +1,10 @@
 # wirecov
 By Sharon Brizinov
 
-Wireshark/tshark code coverage analysis tool. Builds an instrumented tshark from source inside Docker, runs pcap files through it, and generates detailed coverage reports - including per-dissector breakdowns with GitLab source links.
+Wireshark/tshark code coverage analysis tool. Builds an instrumented tshark from source inside Docker, runs pcap files through it, and generates detailed coverage reports, including per-dissector breakdowns.
 
-wirecov builds an instrumented Wireshark from source inside Docker and measures exactly which lines of code your pcap files exercise across all protocol dissectors. The key insight is its diff-from-baseline mode - it first captures what tshark runs just by starting up (registration, handoff code), then subtracts that, so you see only the coverage your pcaps actually contributed through real packet dissection. Great for finding undertested protocol code paths, validating fuzzing corpora, or understanding which dissectors your traffic actually hits.
+wirecov builds an instrumented Wireshark from source inside Docker and measures exactly which lines of code your pcap files exercise across all protocol dissectors. The key insight is its diff-from-baseline mode, it first captures what tshark runs just by starting up (registration, handoff code), then subtracts that, so you see only the coverage your pcaps actually contributed through real packet dissection. Great for finding undertested protocol code paths, validating fuzzing corpora, or understanding which dissectors your traffic actually hits.
+
 
 <p align="center">
   <img src="docs/images/help.svg" alt="wirecov --help" width="700">
@@ -11,26 +12,26 @@ wirecov builds an instrumented Wireshark from source inside Docker and measures 
 
 ### Highlights
 
-- **Docker-based** - builds instrumented tshark from source, nothing installed on your host
-- **Any Wireshark version** - tags (`v4.6.4`), branches (`master`), or arbitrary commit hashes
-- **Multi-version matrix** - compare coverage across versions to spot regressions
-- **Diff-from-baseline** - separates init code from actual pcap dissection coverage
-- **Per-dissector reports** - HTML (sortable, searchable), JSON, CSV with GitLab source links
-- **Pcap set optimizer** - finds the minimal subset of pcaps that achieves maximum coverage
-- **Per-pcap attribution** - shows which pcap contributes which lines of coverage
-- **Interactive version picker** - fuzzy-searchable dropdown with cached image indicators
-- **Coverage badges** - shields.io-compatible JSON endpoint for CI dashboards
-- **Incremental builds** - first build takes ~15 min, subsequent runs reuse cached Docker images instantly
+- **Docker-based** — builds instrumented tshark from source, nothing installed on your host
+- **Any Wireshark version** — tags (`v4.6.4`), branches (`master`), or arbitrary commit hashes
+- **Multi-version matrix** — compare coverage across versions to spot regressions
+- **Diff-from-baseline** — separates init code from actual pcap dissection coverage
+- **Per-dissector reports** — HTML (sortable, searchable), JSON, CSV with GitLab source links
+- **Pcap set optimizer** — finds the minimal subset of pcaps that achieves maximum coverage
+- **Per-pcap attribution** — shows which pcap contributes which lines of coverage
+- **Interactive version picker** — fuzzy-searchable dropdown with cached image indicators
+- **Coverage badges** — shields.io-compatible JSON endpoint for CI dashboards
+- **Incremental builds** — first build takes ~15 min, subsequent runs reuse cached Docker images instantly
 
 ## How it works
 
 1. Clones Wireshark from https://gitlab.com/wireshark/wireshark.git at a chosen version and compiles tshark with `--coverage` (gcov) flags inside Docker
 2. Captures a **baseline** by running tshark on an empty pcap (measures init-only code: `proto_register_*`, `proto_reg_handoff_*`, plugin loading)
-3. Runs your pcap(s) through the instrumented tshark with full dissection (`-V -x -2`)
+3. Runs your pcap(s) through the instrumented tshark in **two passes** to maximize coverage (see [tshark dual-pass methodology](#tshark-dual-pass-methodology))
 4. Captures lcov coverage data and generates reports
 5. Produces **diff-from-baseline** reports showing only what your pcaps actually exercised (subtracting the init code)
 
-All compilation happens inside Docker - nothing is built on your host machine.
+All compilation happens inside Docker — nothing is built on your host machine.
 
 ## Requirements
 
@@ -42,7 +43,6 @@ All compilation happens inside Docker - nothing is built on your host machine.
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-
 pip install -e .
 ```
 
@@ -123,9 +123,9 @@ wirecov matrix ./pcaps/ -V v4.6.2,v4.6.3,v4.6.4
 ```
 
 Output includes:
-- **Version summary** - dissector count, covered count, line rate per version
-- **Dissector changes** - per-dissector coverage delta between first and last version
-- **`matrix.json`** - full machine-readable comparison data
+- **Version summary** — dissector count, covered count, line rate per version
+- **Dissector changes** — per-dissector coverage delta between first and last version
+- **`matrix.json`** — full machine-readable comparison data
 
 <p align="center">
   <img src="docs/images/matrix.svg" alt="wirecov matrix" width="800">
@@ -273,8 +273,8 @@ wirecov-output/v4.6.4_20260328_143021/
 
 ### Report types
 
-- **`reports/`** - Full dissector coverage from your pcap(s), including tshark initialization code
-- **`reports-diff/`** - Coverage with init baseline subtracted. This answers: "what code did my pcap(s) actually exercise?" by removing the code that runs on every tshark startup regardless of input. Includes a collapsible section showing unchanged (init-only) dissectors and a stacked bar visualization of init vs pcap-only vs uncovered lines.
+- **`reports/`** — Full dissector coverage from your pcap(s), including tshark initialization code
+- **`reports-diff/`** — Coverage with init baseline subtracted. This answers: "what code did my pcap(s) actually exercise?" by removing the code that runs on every tshark startup regardless of input. Includes a collapsible section showing unchanged (init-only) dissectors and a stacked bar visualization of init vs pcap-only vs uncovered lines.
 
 ## Dissector reports
 
@@ -290,7 +290,7 @@ The dissector summary classifies each of Wireshark's ~2,177 protocol dissectors 
 
 Each dissector entry includes:
 - **Numbering** (#) for ranking
-- **Source file link** - clickable hyperlink to the source on GitLab (HTML/JSON/CSV)
+- **Source file link** — clickable hyperlink to the source on GitLab (HTML/JSON/CSV)
 - **Line and function coverage** with visual bars (HTML)
 - **First created / last updated** dates extracted from git history
 - **Classification** level
@@ -301,7 +301,7 @@ Dissector names use the full source filename (e.g. `packet-tcp`, `packet-ieee802
   <img src="docs/images/table.svg" alt="Dissector coverage table" width="850">
 </p>
 
-### HTML report - standard coverage
+### HTML report — standard coverage
 
 <p align="center">
   <img src="docs/images/html_standard_report.png" alt="HTML standard coverage report" width="900">
@@ -309,7 +309,7 @@ Dissector names use the full source filename (e.g. `packet-tcp`, `packet-ieee802
 
 ## Init baseline and diff reports
 
-When tshark starts, it runs initialization code (`proto_register_*`, `proto_reg_handoff_*`) for every dissector - even before looking at any packets. This means even an empty pcap produces significant coverage numbers.
+When tshark starts, it runs initialization code (`proto_register_*`, `proto_reg_handoff_*`) for every dissector — even before looking at any packets. This means even an empty pcap produces significant coverage numbers.
 
 wirecov captures this init coverage by running tshark on a minimal empty pcap (24-byte header, zero packets) before processing your actual pcaps. The **diff reports** (`reports-diff/`) subtract this baseline, showing only the coverage your pcap(s) contributed through actual packet dissection.
 
@@ -330,13 +330,66 @@ This is useful for:
   <img src="docs/images/diff.svg" alt="Diff-from-baseline terminal report" width="820">
 </p>
 
-### HTML report - diff from baseline
+### HTML report — diff from baseline
 
 [View a live example report](docs/example-report/dissector-diff-init-report.html)
 
 <p align="center">
   <img src="docs/images/html_diff_report.png" alt="HTML diff-from-baseline report" width="900">
 </p>
+
+## tshark dual-pass methodology
+
+Each pcap is processed **twice** with different tshark configurations. The coverage data from both passes is accumulated (gcda counters are additive), so the final report reflects the union of code exercised across both passes.
+
+### Pass 1: Full reassembly
+
+```
+tshark -V -x -2
+```
+
+| Flag | Purpose |
+|---|---|
+| `-V` | Verbose: print full protocol tree for every packet |
+| `-x` | Hex dump: print hex/ASCII dump of packet data |
+| `-2` | Two-pass analysis: enables dissection that needs future-packet context (TCP reassembly, response times, etc.) |
+
+This exercises Wireshark's reassembly, defragmentation, and checksum verification code paths. It's the standard way to get deep dissection — but it can **skip upper-layer protocols** when fragments are missing, TCP segments are incomplete, or checksums are invalid.
+
+### Pass 2: No reassembly
+
+```
+tshark -V -x \
+  -o ip.defragment:FALSE \
+  -o tcp.desegment_tcp_streams:FALSE \
+  -o tcp.check_checksum:FALSE \
+  -o udp.check_checksum:FALSE \
+  -o tls.desegment_ssl_records:FALSE \
+  -o http.desegment_body:FALSE
+```
+
+| Flag | Purpose |
+|---|---|
+| `-o ip.defragment:FALSE` | Disable IP fragment reassembly — dissect each fragment's payload independently |
+| `-o tcp.desegment_tcp_streams:FALSE` | Disable TCP stream reassembly — dissect each segment's payload as-is |
+| `-o tcp.check_checksum:FALSE` | Skip TCP checksum verification — don't discard packets with bad checksums |
+| `-o udp.check_checksum:FALSE` | Skip UDP checksum verification |
+| `-o tls.desegment_ssl_records:FALSE` | Disable TLS record desegmentation |
+| `-o http.desegment_body:FALSE` | Disable HTTP body desegmentation |
+
+Note: `-2` (two-pass) is intentionally omitted — it doesn't apply when reassembly is disabled.
+
+### Why two passes?
+
+Many real-world pcap files contain incomplete captures — truncated packets, missing TCP segments, bad checksums from capture offloading, partial TLS handshakes. With reassembly enabled (pass 1), tshark may buffer data waiting for fragments that never arrive, causing upper-layer dissectors (HTTP, DNS, TLS, etc.) to never execute.
+
+By running a second pass with reassembly disabled, tshark is forced to attempt dissection of every packet's payload immediately. This hits protocol dissector code paths that pass 1 would skip.
+
+The tradeoff:
+- **Pass 1** covers: reassembly logic, defragmentation, checksum verification, multi-packet protocol features
+- **Pass 2** covers: per-packet dissector entry points that get skipped when reassembly fails
+
+Together they produce significantly better coverage than either pass alone.
 
 ## Architecture
 
@@ -358,7 +411,7 @@ Host (your machine)                    Docker container (ephemeral)
 - Tagged as `wirecov-tshark:{version}` (or `wirecov-tshark:{commit}` for commits)
 
 **Container** (ephemeral, fresh per run):
-- Clears `.gcda` counters → runs tshark on pcaps → captures lcov
+- Clears `.gcda` counters → runs tshark on pcaps (2 passes each) → captures lcov
 - Writes results to bind-mounted `/output`
 - Auto-deleted on exit (`--rm`)
 
@@ -368,9 +421,9 @@ The `docker/entrypoint.sh` is **mounted from your host** at runtime, so changes 
 
 | What changed | Rebuild needed? |
 |---|---|
-| `wirecov/*.py`, templates, reports | No - runs on host |
-| `docker/entrypoint.sh` | No - mounted at runtime |
-| `docker/extract_dates.py` | Yes - runs at build time |
+| `wirecov/*.py`, templates, reports | No — runs on host |
+| `docker/entrypoint.sh` | No — mounted at runtime |
+| `docker/extract_dates.py` | Yes — runs at build time |
 | `Dockerfile` (deps, cmake, etc.) | Yes |
 
 Use `wirecov rebuild <version>` to force a clean rebuild, or `wirecov run --no-cache` to rebuild before running.
