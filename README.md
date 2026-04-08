@@ -5,9 +5,10 @@ Wireshark/tshark code coverage analysis tool. Builds an instrumented tshark from
 
 wirecov builds an instrumented Wireshark from source inside Docker and measures exactly which lines of code your pcap files exercise across all protocol dissectors. The key insight is its diff-from-baseline mode, it first captures what tshark runs just by starting up (registration, handoff code), then subtracts that, so you see only the coverage your pcaps actually contributed through real packet dissection. Great for finding undertested protocol code paths, validating fuzzing corpora, or understanding which dissectors your traffic actually hits.
 
+### HTML report — standard coverage
 
 <p align="center">
-  <img src="docs/images/help.svg" alt="wirecov --help" width="700">
+  <img src="docs/images/html_standard_report.png" alt="HTML standard coverage report" width="900">
 </p>
 
 ### Highlights
@@ -22,6 +23,10 @@ wirecov builds an instrumented Wireshark from source inside Docker and measures 
 - **Interactive version picker** — fuzzy-searchable dropdown with cached image indicators
 - **Coverage badges** — shields.io-compatible JSON endpoint for CI dashboards
 - **Incremental builds** — first build takes ~15 min, subsequent runs reuse cached Docker images instantly
+
+<p align="center">
+  <img src="docs/images/help.svg" alt="wirecov --help" width="700">
+</p>
 
 ## How it works
 
@@ -299,12 +304,6 @@ Dissector names use the full source filename (e.g. `packet-tcp`, `packet-ieee802
 
 <p align="center">
   <img src="docs/images/table.svg" alt="Dissector coverage table" width="850">
-</p>
-
-### HTML report — standard coverage
-
-<p align="center">
-  <img src="docs/images/html_standard_report.png" alt="HTML standard coverage report" width="900">
 </p>
 
 ## Init baseline and diff reports
