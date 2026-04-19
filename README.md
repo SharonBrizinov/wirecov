@@ -1,10 +1,10 @@
 # wirecov
+
 By Sharon Brizinov
 
 Wireshark/tshark code coverage analysis tool. Builds an instrumented tshark from source inside Docker, runs pcap files through it, and generates detailed coverage reports, including per-dissector breakdowns.
 
 wirecov builds an instrumented Wireshark from source inside Docker and measures exactly which lines of code your pcap files exercise across all protocol dissectors. The key insight is its diff-from-baseline mode, it first captures what tshark runs just by starting up (registration, handoff code), then subtracts that, so you see only the coverage your pcaps actually contributed through real packet dissection. Great for finding undertested protocol code paths, validating fuzzing corpora, or understanding which dissectors your traffic actually hits.
-
 
 <p align="center">
   <img src="docs/images/help.svg" alt="wirecov --help" width="700">
@@ -345,21 +345,20 @@ Each pcap is processed **twice** with different tshark configurations. The cover
 ### Pass 1: Full reassembly
 
 ```
-tshark -V -x -2
+tshark -V -n
 ```
 
 | Flag | Purpose |
 |---|---|
 | `-V` | Verbose: print full protocol tree for every packet |
-| `-x` | Hex dump: print hex/ASCII dump of packet data |
-| `-2` | Two-pass analysis: enables dissection that needs future-packet context (TCP reassembly, response times, etc.) |
+| `-n` | Disable name resolution (network addresses, transport names, etc.) — avoids DNS/service-name lookups and keeps dissection deterministic |
 
 This exercises Wireshark's reassembly, defragmentation, and checksum verification code paths. It's the standard way to get deep dissection — but it can **skip upper-layer protocols** when fragments are missing, TCP segments are incomplete, or checksums are invalid.
 
 ### Pass 2: No reassembly
 
 ```
-tshark -V -x \
+tshark -V -n \
   -o ip.defragment:FALSE \
   -o tcp.desegment_tcp_streams:FALSE \
   -o tcp.check_checksum:FALSE \
@@ -376,8 +375,6 @@ tshark -V -x \
 | `-o udp.check_checksum:FALSE` | Skip UDP checksum verification |
 | `-o tls.desegment_ssl_records:FALSE` | Disable TLS record desegmentation |
 | `-o http.desegment_body:FALSE` | Disable HTTP body desegmentation |
-
-Note: `-2` (two-pass) is intentionally omitted — it doesn't apply when reassembly is disabled.
 
 ### Why two passes?
 
