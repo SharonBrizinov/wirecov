@@ -17,10 +17,10 @@ class WirecovConfig:
 
     # tshark flags for maximum dissection coverage (two passes)
     # Pass 1: full reassembly — exercises reassembly/defrag/checksum code paths
-    tshark_flags_pass1: List[str] = field(default_factory=lambda: ["-V", "-x", "-2"])
+    tshark_flags_pass1: List[str] = field(default_factory=lambda: ["-V", "-n"])
     # Pass 2: no reassembly — forces per-packet dissection of upper-layer protocols
     tshark_flags_pass2: List[str] = field(default_factory=lambda: [
-        "-V", "-x",
+        "-V", "-n",
         "-o", "ip.defragment:FALSE",
         "-o", "tcp.desegment_tcp_streams:FALSE",
         "-o", "tcp.check_checksum:FALSE",
